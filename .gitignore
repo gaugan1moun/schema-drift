@@ -1,0 +1,22 @@
+# Python
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.ruff_cache/
+.DS_Store
+.tox/
+.vscode/
+Desktop.ini
+.env
+.cache/
+env/
+.eggs/
+build/
+*.egg
+develop-eggs/
+dist/
+.Python
+.pytest_cache/
