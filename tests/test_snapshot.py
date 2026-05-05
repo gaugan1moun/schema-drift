@@ -70,3 +70,10 @@ def test_to_json_is_valid_json(sample_snapshot):
     json_str = sample_snapshot.to_json()
     parsed = json.loads(json_str)
     assert isinstance(parsed, dict)
+
+
+def test_round_trip_preserves_captured_at(sample_snapshot):
+    """Ensure captured_at timestamp is preserved exactly through serialization."""
+    original_captured_at = sample_snapshot.captured_at
+    restored = SchemaSnapshot.from_json(sample_snapshot.to_json())
+    assert restored.captured_at == original_captured_at
