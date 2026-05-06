@@ -36,6 +36,11 @@ class AuditReport:
     def versions_with_changes(self) -> List[str]:
         return [e.to_version for e in self.entries if e.has_changes]
 
+    @property
+    def has_any_changes(self) -> bool:
+        """Return True if at least one entry in the report contains changes."""
+        return any(e.has_changes for e in self.entries)
+
 
 def audit_history(history: SnapshotHistory) -> AuditReport:
     """Diff every consecutive pair of snapshots stored in *history*.
