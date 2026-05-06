@@ -1,79 +1,62 @@
-"""High-level audit helpers: diff consecutive snapshots in history."""
+"""Audit trail: accumulate and summarise multiple DiffResults over time."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Optional
 
-from schema_drift.diff import DiffResult, diff_snapshots
-from schema_drift.history import SnapshotHistory
+from schema_drift.diff import DiffResult
 
 
 @dataclass
 class AuditEntry:
-    """A diff between two consecutive snapshots."""
+    """A single recorded diff with a timestamp."""
 
-    from_version: str
-    to_version: str
-    result: DiffResult
+    diff: DiffResult
+    captured_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
 
-    @property
     def has_changes(self) -> bool:
-        return self.result.has_changes
+        """Return True if the wrapped diff contains any changes."""
+        return self.diff.has_changes()
 
 
 @dataclass
 class AuditReport:
-    """Collection of all consecutive diffs across the full history."""
+    """Collection of AuditEntry objects representing a history of diffs."""
 
     entries: List[AuditEntry] = field(default_factory=list)
 
-    @property
     def total_changes(self) -> int:
-        return sum(len(e.result.changes) for e in self.entries)
+        """Return the total number of individual schema changes across all entries."""
+        return sum(len(e.diff.changes) for e in self.entries)
 
-    @property
     def versions_with_changes(self) -> List[str]:
-        return [e.to_version for e in self.entries if e.has_changes]
+        """Return a list of to_version strings where changes were detected."""
+        return [
+            e.diff.to_version
+            for e in self.entries
+            if e.has_changes()
+        ]
 
-    @property
-    def has_any_changes(self) -> bool:
-        """Return True if at least one entry in the report contains changes."""
-        return any(e.has_changes for e in self.entries)
-
-
-def audit_history(history: SnapshotHistory) -> AuditReport:
-    """Diff every consecutive pair of snapshots stored in *history*.
-
-    Returns an :class:`AuditReport` with one :class:`AuditEntry` per pair.
-    If fewer than two snapshots exist the report will be empty.
-    """
-    report = AuditReport()
-    versions = history.list_versions()
-    if len(versions) < 2:
-        return report
-
-    for i in range(1, len(versions)):
-        prev_ver = versions[i - 1]
-        curr_ver = versions[i]
-
-        prev_snap = history.load(_unsafe(prev_ver))
-        curr_snap = history.load(_unsafe(curr_ver))
-
-        result = diff_snapshots(prev_snap, curr_snap)
-        report.entries.append(
-            AuditEntry(
-                from_version=prev_snap.version,
-                to_version=curr_snap.version,
-                result=result,
-            )
+    def add_entry(self, diff: DiffResult, captured_at: Optional[datetime] = None) -> AuditEntry:
+        """Create and append a new AuditEntry for *diff*."""
+        entry = AuditEntry(
+            diff=diff,
+            captured_at=captured_at or datetime.now(tz=timezone.utc),
         )
+        self.entries.append(entry)
+        return entry
 
-    return report
+    def entries_with_changes(self) -> List[AuditEntry]:
+        """Return only the entries that contain at least one change."""
+        return [e for e in self.entries if e.has_changes()]
 
-
-def _unsafe(safe_name: str) -> str:
-    """Reverse the safe-name transformation used by SnapshotHistory (best-effort)."""
-    # SnapshotHistory stores files as <safe>.json where safe = version with / -> _
-    # We just pass the stem directly to history.load which re-applies the transform.
-    return safe_name
+    def summary(self) -> dict:
+        """Return a high-level summary dict suitable for display or serialisation."""
+        return {
+            "total_entries": len(self.entries),
+            "entries_with_changes": len(self.entries_with_changes()),
+            "total_changes": self.total_changes(),
+            "versions_with_changes": self.versions_with_changes(),
+        }
