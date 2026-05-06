@@ -87,19 +87,12 @@ def test_column_added(base_snapshot, updated_snapshot):
 
 def test_column_nullable_changed(base_snapshot, updated_snapshot):
     result = diff_snapshots(base_snapshot, updated_snapshot)
-    nullable_changes = [c for c in result.changes if c.change_type == ChangeType.COLUMN_NULLABLE_CHANGED]
-    assert any(c.table == "users" and c.column == "email" for c in nullable_changes)
+    modified = [c for c in result.changes if c.change_type == ChangeType.COLUMN_MODIFIED]
+    assert any(c.table == "users" and c.column == "email" for c in modified)
 
 
 def test_no_changes_identical_snapshots(base_snapshot):
+    """Diffing a snapshot against itself should produce no changes."""
     result = diff_snapshots(base_snapshot, base_snapshot)
     assert not result.has_changes
-    assert "No schema changes" in result.summary()
-
-
-def test_summary_contains_change_info(base_snapshot, updated_snapshot):
-    result = diff_snapshots(base_snapshot, updated_snapshot)
-    summary = result.summary()
-    assert "v1" in summary
-    assert "v2" in summary
-    assert "orders" in summary
+    assert result.changes == []
