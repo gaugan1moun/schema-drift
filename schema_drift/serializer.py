@@ -32,10 +32,22 @@ def snapshot_to_dict(snapshot: SchemaSnapshot) -> dict:
 
 def snapshot_from_dict(data: dict) -> SchemaSnapshot:
     """Reconstruct a SchemaSnapshot from a plain dictionary."""
+    for required_key in ("version", "captured_at", "tables"):
+        if required_key not in data:
+            raise ValueError(f"Missing required key in snapshot data: '{required_key}'")
+
     tables = {}
     for table_name, table_data in data.get("tables", {}).items():
+        if "name" not in table_data:
+            raise ValueError(f"Missing 'name' for table '{table_name}'")
         columns = {}
         for col_name, col_data in table_data.get("columns", {}).items():
+            for required_col_key in ("name", "data_type"):
+                if required_col_key not in col_data:
+                    raise ValueError(
+                        f"Missing '{required_col_key}' for column '{col_name}' "
+                        f"in table '{table_name}'"
+                    )
             columns[col_name] = ColumnSchema(
                 name=col_data["name"],
                 data_type=col_data["data_type"],
@@ -44,7 +56,11 @@ def snapshot_from_dict(data: dict) -> SchemaSnapshot:
             )
         tables[table_name] = TableSchema(name=table_data["name"], columns=columns)
 
-    captured_at = datetime.fromisoformat(data["captured_at"])
+    try:
+        captured_at = datetime.fromisoformat(data["captured_at"])
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid 'captured_at' timestamp: {data['captured_at']!r}") from exc
+
     return SchemaSnapshot(
         version=data["version"],
         captured_at=captured_at,
