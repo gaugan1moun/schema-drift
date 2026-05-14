@@ -42,6 +42,17 @@ class ChangeFrequencyReport:
             reverse=descending,
         )
 
+    def tables_above_threshold(self, threshold: int) -> List[TableFrequency]:
+        """Return tables whose change count exceeds the given threshold.
+
+        Args:
+            threshold: Minimum change count (exclusive) to include a table.
+
+        Returns:
+            List of TableFrequency entries with change_count > threshold.
+        """
+        return [tf for tf in self.table_frequencies if tf.change_count > threshold]
+
     def to_dict(self) -> dict:
         return {
             "table_frequencies": [tf.to_dict() for tf in self.table_frequencies]
