@@ -52,6 +52,10 @@ class DiffResult:
             lines.append(f"  {change}")
         return "\n".join(lines)
 
+    def changes_by_type(self, change_type: ChangeType) -> List[SchemaChange]:
+        """Return all changes of a specific ChangeType."""
+        return [c for c in self.changes if c.change_type == change_type]
+
 
 def diff_snapshots(old: SchemaSnapshot, new: SchemaSnapshot) -> DiffResult:
     """Compare two snapshots and return a DiffResult with all detected changes."""
