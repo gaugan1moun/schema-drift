@@ -70,6 +70,23 @@ def test_score_multiple_length():
     assert len(results) == 2
 
 
+def test_score_multiple_empty():
+    """score_multiple should return an empty list when given no diffs."""
+    results = score_multiple([])
+    assert results == []
+
+
+def test_score_multiple_preserves_order():
+    """score_multiple should return results in the same order as the input diffs."""
+    diffs = [
+        _diff(ChangeType.COLUMN_ADDED),   # score 1
+        _diff(ChangeType.TABLE_REMOVED),  # score 10
+        _diff(ChangeType.COLUMN_REMOVED), # score 8
+    ]
+    results = score_multiple(diffs)
+    assert [r.score for r in results] == [1, 10, 8]
+
+
 def test_to_dict_contains_risk_level():
     result = score_diff(_diff(ChangeType.COLUMN_REMOVED))
     d = result.to_dict()
